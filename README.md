@@ -1,19 +1,61 @@
-I don't know if this game still has a community anymore but this subreddit seems to still be somewhat active. Anyway, I have created a simple tool that lets you visualize your custom tunes and easily create quick tunes to start with.
-URL: https://upex-yes.github.io/PCR-Gear-Tuner/
-Basically what this tool does is lets you create and export tunes by simply dragging around sliders until you have found the configuration that works for your build. One of the biggest problems I've had with this game for years is that tuning is like a shot in the dark, and a LOT of trial and error. Lots of trying gear ratios, testing it out, tweaking it, then having to change your first gear and starting all over again.
-This tool simplifies 99% of that by showing you exactly what RPMs your engine will be at after a shift and at what speed. Feel free to poke around with it, its fairly self explanatory, but I will give some detail down below if people are still confused as to how to use it.
-Using the tool
-The first thing you will have to do before creating a tune is to dyno your car as it sits. The two numbers you will need is your rev limiter RPM (when the RPM finally settles to a static number on the dyno) and your peak HP RPM.
-In the inputs at the top of the page, enter your rev limiter RPM into the Shift RPM box. This will be your engine RPM right before you shift. The next box will be the target RPM you want the next shift to land on. This will need to be your peak HP RPM you got on the dyno minus a few hundred RPM but you will tweak this later. **Never set the target RPM to be greater than your peak HP RPM.** Do not adjust the tire diameter. This field is only for generating the MPH estimates.
-Section A:
-From here, you can adjust the first gear ratio and the final drive ratio to get your target trap speed in top gear. By default, all of the other gear ratios are locked because the tool is calculating the ideal ratios for the rest of the gears based on your target RPM. If you move the 1st gear slider around, you will notice that all the other gears will move to create the most ideal ratio to remain in the power band that you specified. At the bottom section of the page, you'll find the top speeds for each gear, as well as the RPM drop by each gear. With this, you will know how fast you will be traveling at the top of a gear, and exactly how much your RPMs will drop after shifting, and what your RPM will be after shifting. THIS is what removed the shooting in the dark frustration from PCR gear tuning. There is also an export button to save your tunes as a .txt file for later reference.
-Section B:
-This is where you will be doing your custom tunes. It functions mostly the same as section A, with the exception that there is no logic to attempt to change gear ratios to meet your target RPM. This section is purely informational but it does still allow you to see the information that you need to refine your tune.
-Additionally, if you have a tune that you like in Section A that you want to tweak a bit, just disable the Auto Progression checkbox in the upper right and it will allow you to tweak your tune in Section A, functionally identical to Section B.
+# PCR Gear Tuner
 
-Target RPM Tuning
-As previously noted, your target RPM will need to be tweaked in order to avoid taching out before the end of your run. In a perfect world, we would like the engine RPM to remain entirely within the power band for the duration of the run. But unfortunately this is not possible. When you have found yourself taching out before the finishing line, I would avoid simply adjusting the final drive ratio, as this will inevitably make your starting gear too tall to be functional. Start off by lowering your target RPM a couple hundred RPMs at a time until you get to the point where you are just barely making it to the finish line before taching out. Then, adjust your gear ratios from there. Again, never set your target RPM to be greater than your peak HP RPM, I cannot stress this enough.
-That is pretty much it. Like I said, I am not sure if there is a community behind the game anymore or not, and it seems the dev had abandoned it. I have always loved this game and still play it, although I haven't been active in any community for over 7 years.
- This tool started out as an excel spreasheet with cell functions, until I realized that I could turn it into an html web page and make it easier to use. I would recommend accessing it on a desktop or laptop computer, as it isnt optimized for mobile use, although it does work on mobile. If there is sufficient demand, I may consider creating a mobile site.
-Feel free to comment suggestions or improvements and share your tunes. I've always felt the tuning part of this game was its strongest and most interesting mechanic, but blindly tweaking gear ratios is such a pain.
-Cheers!
+<img width="1312" height="885" alt="Screenshot from 2025-11-07 00-20-20" src="https://github.com/user-attachments/assets/96607994-2ade-4085-a061-a636f05447b0" />
+
+
+A simple web-based tool for visualizing and creating custom gear tunes in *Pixel Car Racer* (PCR). Easily drag sliders to configure gear ratios, preview RPM drops, and export tunes—eliminating the trial-and-error frustration of traditional tuning.
+
+[Try it here](https://upex-yes.github.io/PCR-Gear-Tuner/)
+
+> **Note:** This tool is best used on a desktop or laptop. It's functional on mobile but not optimized. If there's demand, a mobile version could be developed.
+
+## Why This Tool?
+Tuning gears in PCR has always felt like a shot in the dark: endless tweaking, testing, and restarting when one change throws everything off. This tool simplifies it by letting you:
+- Drag sliders to adjust ratios and instantly see RPMs after shifts, top speeds per gear, and more.
+- Visualize your engine's power band to stay optimal.
+- Export tunes as `.txt` files for easy reference.
+
+I built this from an Excel spreadsheet prototype because I love PCR's tuning mechanics but hated the blind adjustments. The game might not have a huge active community anymore (though the subreddit seems somewhat lively), but if you're still playing, this should help.
+
+## Getting Started
+Before tuning, dyno your car in-game to get two key values:
+- **Rev Limiter RPM**: The static RPM on the dyno when it settles.
+- **Peak HP RPM**: Where your horsepower peaks.
+
+### Input Setup
+At the top of the page:
+- Enter your **Rev Limiter RPM** into the "Shift RPM" box (RPM right before shifting).
+- Set the "Target RPM" to your Peak HP RPM minus a few hundred RPM (tweak later; never exceed Peak HP RPM).
+- Leave "Tire Diameter" as-is unless customizing MPH estimates.
+
+## Section A: Auto-Progression Tuning
+This is for quick, optimized tunes:
+- Adjust the **1st Gear Ratio** and **Final Drive Ratio** sliders to hit your target trap speed in top gear.
+- Other gears auto-adjust to keep you in the power band based on your Target RPM.
+- Moving the 1st gear slider recalculates all ratios for ideal performance.
+
+At the bottom:
+- View top speeds per gear.
+- See RPM drops and post-shift RPMs—no more guessing!
+
+Use the **Export** button to save as `.txt`.
+
+> **Tip:** Disable "Auto Progression" (top-right checkbox) to manually tweak like Section B.
+
+## Section B: Custom Manual Tuning
+For full control:
+- Functions like Section A but without auto-adjustments.
+- Purely informational: Adjust freely and preview speeds/RPMs.
+- Great for refining a Section A tune—copy over and tweak.
+
+## Fine-Tuning Target RPM
+To avoid redlining before the finish:
+- Lower Target RPM by 200-300 RPM increments if taching out early.
+- Aim to just reach the line before redline—keeps you in the power band.
+- Avoid tweaking Final Drive alone (makes 1st gear too tall); adjust ratios instead.
+- **Reminder:** Target RPM must stay below Peak HP RPM.
+
+## Feedback & Community
+If PCR still has fans out there (dev seems to have abandoned it), share your tunes, suggestions, or improvements in the comments or issues. I've been away from the community for 7+ years but still play—tuning is the game's best feature!
+
+Cheers! 🚗💨
