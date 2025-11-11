@@ -1,0 +1,582 @@
+```html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PCR Gear Tuner</title>
+<style>
+  :root{ --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; --accent2:#38bdf8; --font-family:system-ui,-apple-system,"Segoe UI",Roboto,Inter,Arial,sans-serif; --font-size:16px; --font-style:normal; --font-weight:normal; }
+  html,body{background:var(--bg); color:var(--text); font-family:var(--font-family); font-size:var(--font-size); font-style:var(--font-style); font-weight:var(--font-weight);}
+  h1,h2,h3{margin:0 0 .5rem 0}
+  .wrap{max-width:1100px; margin:2rem auto; padding:0 1rem; position:relative;}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:1rem}
+  .panel{background:var(--panel); border-radius:.75rem; padding:1rem; box-shadow:0 1px 2px rgba(0,0,0,.2)}
+  .row{display:grid; grid-template-columns:200px 1fr 110px; gap:.75rem; align-items:center; margin:.5rem 0}
+  .row label{color:var(--muted); display:flex; align-items:center; gap:0.25rem;}
+  .row .lock{grid-column:1 / span 3; display:flex; gap:.5rem; align-items:center; margin-top:.25rem}
+  input[type=range]{width:100%}
+  input[type=number]{width:100%; padding:.35rem .5rem; background:#0b1220; border:1px solid #334155; color:#e5e7eb; border-radius:.4rem}
+  input[readonly]{opacity:.7}
+  .muted{color:var(--muted); font-size:.9rem}
+  table{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums}
+  th,td{padding:.4rem .5rem; border-bottom:1px solid #1f2937}
+  th{color:#cbd5e1; text-align:left; font-weight:600}
+  .pill{display:inline-block; padding:.1rem .5rem; border-radius:999px; background:#0b1220; border:1px solid #334155; color:#cbd5e1}
+  .btnbar{display:flex; gap:.5rem; flex-wrap:wrap; margin:.5rem 0 0}
+  button{background:#0b1220; border:1px solid #334155; color:#e5e7eb; padding:.45rem .75rem; border-radius:.5rem; cursor:pointer}
+  button:hover{border-color:#64748b}
+  dialog{padding:1rem; background:var(--panel); color:var(--text); border:1px solid #334155; border-radius:.75rem;}
+  dialog label{display:block; margin-bottom:0.5rem;}
+  dialog p{margin:1rem 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>PCR Gear Tuner</h1>
+  <button id="settingsBtn" onclick="openSettingsDialog()" style="position:absolute; right:1rem; top:2rem; font-size:1.5rem; background:none; border:none; cursor:pointer; color:var(--text);">⚙️</button>
+  <p class="muted">Interactive gear calculator with exportable tunes. Tire diameter defaults to <strong>22.96 in</strong> and is locked until you unlock it.</p>
+  <div class="panel">
+    <div class="grid">
+      <div>
+        <h2>Common Inputs</h2>
+        <div class="row">
+          <label>Shift RPM (Before shift)</label>
+          <input id="shiftRPM" type="range" min="4000" max="11000" step="50" value="8200"
+                 oninput="byId('shiftRPM_val').value=this.value; recalc()"/>
+          <input id="shiftRPM_val" type="number" min="1000" max="12000" step="10" value="8200"
+                 oninput="byId('shiftRPM').value=this.value; recalc()"/>
+        </div>
+        <div class="row">
+          <label>Target RPM after shift</label>
+          <input id="afterRPM" type="range" min="3000" max="11000" step="50" value="7100"
+                 oninput="byId('afterRPM_val').value=this.value; recalc()"/>
+          <input id="afterRPM_val" type="number" min="3000" max="12000" step="10" value="7100"
+                 oninput="byId('afterRPM').value=this.value; recalc()"/>
+        </div>
+        <div class="row">
+          <label id="tireLabel">Tire diameter (inches)</label>
+          <input id="tireDia" type="range" min="18" max="30" step="0.01" value="22.96" disabled
+                 oninput="byId('tireDia_val').value=this.value; recalc()"/>
+          <input id="tireDia_val" type="number" step="0.01" value="22.96" readonly
+                 oninput="byId('tireDia').value=this.value; recalc()"/>
+          <div class="lock">
+            <span id="unlockSection">
+              <input id="unlockTire" type="checkbox" onchange="toggleTireEdit()">
+              <span class="muted">Unlock to edit tire diameter</span>
+            </span>
+            <button id="calcButton" onclick="openTireCalcDialog()" style="display:none;">Calculate Tire Diameter</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h2>Mode</h2>
+        <div class="row">
+          <label>Auto progression (geometric)</label>
+          <input id="autoProg" type="checkbox" checked onchange="recalc()"/>
+          <span class="pill">ratio = after / before</span>
+        </div>
+        <div class="row">
+          <label>Show comparison setup B</label>
+          <input id="showB" type="checkbox" checked
+                 onchange="document.getElementById('blockB').style.display=this.checked?'block':'none'; recalc()"/>
+          <span class="pill">A vs. B</span>
+        </div>
+        <div class="row">
+          <label>Enable compatibility for other games</label>
+          <input id="compatMode" type="checkbox" onchange="toggleCompat()"/>
+          <span class="pill">Adds 7th-10th gears</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="grid" style="margin-top:1rem">
+    <!-- SETUP A -->
+    <div class="panel" id="blockA">
+      <h2>Setup A <span class="muted">("Stock" / Auto)</span></h2>
+      <div class="row">
+        <label>Final drive</label>
+        <input id="fdA" type="range" min="0" max="5" step="0.01" value="2.50"
+               oninput="byId('fdA_val').value=this.value; recalc()"/>
+        <input id="fdA_val" type="number" step="0.01" value="2.50"
+               oninput="byId('fdA').value=this.value; recalc()"/>
+      </div>
+      <div id="gearsA"></div>
+      <div class="btnbar">
+        <button onclick="exportSetup('A')">Export Setup A</button>
+      </div>
+      <h3 style="margin-top:1rem">Results</h3>
+      <div id="tableA"></div>
+    </div>
+    <!-- SETUP B -->
+    <div class="panel" id="blockB">
+      <h2>Setup B <span class="muted">(Custom)</span></h2>
+      <div class="row">
+        <label>Final drive</label>
+        <input id="fdB" type="range" min="0" max="5" step="0.01" value="4.49"
+               oninput="byId('fdB_val').value=this.value; recalc()"/>
+        <input id="fdB_val" type="number" step="0.01" value="4.49"
+               oninput="byId('fdB').value=this.value; recalc()"/>
+      </div>
+      <div id="gearsB"></div>
+      <div class="btnbar">
+        <button onclick="exportSetup('B')">Export Setup B</button>
+      </div>
+      <h3 style="margin-top:1rem">Results</h3>
+      <div id="tableB"></div>
+    </div>
+  </div>
+</div>
+<dialog id="tireCalcDialog">
+  <h3>Calculate Tire Diameter <button onclick="showHelp()" style="background:none; border:none; cursor:pointer; color:var(--text); font-size:1rem; padding:0; margin-left:0.5rem;">?</button></h3>
+  <label for="calcRPM">RPM:</label> <input id="calcRPM" type="number" min="1000" step="10" oninput="calcTireDia()">
+  <label for="calcSpeed" id="calcSpeedLabel">Speed (mph):</label> <input id="calcSpeed" type="number" min="0" step="0.1" oninput="calcTireDia()">
+  <label for="calcGear">Gear Ratio:</label> <input id="calcGear" type="number" min="0" step="0.01" oninput="calcTireDia()">
+  <label for="calcFD">Final Drive Ratio:</label> <input id="calcFD" type="number" min="0" step="0.01" oninput="calcTireDia()">
+  <p id="calcDiaP">Tire Diameter (inches): <span id="calcDia">-</span></p>
+  <button onclick="applyTireDia()">Apply</button>
+  <button onclick="byId('tireCalcDialog').close()">Cancel</button>
+</dialog>
+<dialog id="settingsDialog">
+  <h3>Settings</h3>
+  <label>Speed Unit: <select id="speedUnitSel"><option value="mph">MPH</option><option value="kph">KM/H</option></select></label>
+  <label>Diameter Unit: <select id="diaUnitSel"><option value="inches">Inches</option><option value="cm">CM</option></select></label>
+  <label>Background Color: <input type="color" id="bgColor"></label>
+  <label>Panel Color: <input type="color" id="panelColor"></label>
+  <label>Text Color: <input type="color" id="textColor"></label>
+  <label>Font Family: <select id="fontFamily"><option value="system-ui,-apple-system,'Segoe UI',Roboto,Inter,Arial,sans-serif">Default</option><option value="Arial, sans-serif">Arial</option><option value="'Times New Roman', serif">Times New Roman</option><option value="'Courier New', monospace">Courier New</option><option value="Verdana, sans-serif">Verdana</option><option value="Georgia, serif">Georgia</option></select></label>
+  <label>Font Size: <select id="fontSize"><option value="12px">12px</option><option value="14px">14px</option><option value="16px">16px</option><option value="18px">18px</option><option value="20px">20px</option></select></label>
+  <label>Font Style: <select id="fontStyle"><option value="normal">Normal</option><option value="italic">Italic</option></select></label>
+  <label>Font Weight: <select id="fontWeight"><option value="normal">Normal</option><option value="bold">Bold</option></select></label>
+  <button onclick="applySettings()">Apply</button>
+  <button onclick="byId('settingsDialog').close()">Cancel</button>
+</dialog>
+<script>
+/* ---------- Utilities ---------- */
+const byId = (id)=>document.getElementById(id);
+const fmt = (n, d=2) => Number(n).toLocaleString(undefined,{maximumFractionDigits:d, minimumFractionDigits:d});
+const round2 = (x)=> Math.round((+x + Number.EPSILON)*100)/100;
+const clamp = (val, min, max)=> Math.min(max, Math.max(min, val));
+const safeFmt = (n, d=2)=> Number.isFinite(n) ? fmt(n, d) : '';
+const INCH_TO_CM = 2.54;
+const MPH_TO_KPH = 1.60934;
+let speedUnit = 'mph';
+let diaUnit = 'inches';
+function toggleTireEdit(){
+  const unlocked = byId('unlockTire').checked;
+  byId('tireDia').disabled = !unlocked;
+  byId('tireDia_val').readOnly = !unlocked;
+  if(unlocked){
+    byId('tireDia').value = byId('tireDia_val').value;
+  }
+  recalc();
+}
+function openTireCalcDialog(){
+  updateUnitLabels();
+  byId('calcRPM').value = '';
+  byId('calcSpeed').value = '';
+  byId('calcGear').value = '';
+  byId('calcFD').value = '';
+  byId('calcDia').textContent = '-';
+  byId('tireCalcDialog').showModal();
+}
+function calcTireDia(){
+  const rpm = parseFloat(byId('calcRPM').value);
+  const input_speed = parseFloat(byId('calcSpeed').value);
+  const gear = parseFloat(byId('calcGear').value);
+  const fd = parseFloat(byId('calcFD').value);
+  if(isNaN(rpm) || isNaN(input_speed) || isNaN(gear) || isNaN(fd) || rpm <= 0 || input_speed <= 0 || gear <= 0 || fd <= 0){
+    byId('calcDia').textContent = '-';
+    return;
+  }
+  const effective_mph = speedUnit === 'mph' ? input_speed : input_speed / MPH_TO_KPH;
+  const dia_inches = (effective_mph * gear * fd * 1056) / (rpm * Math.PI);
+  const display_dia = diaUnit === 'inches' ? dia_inches : dia_inches * INCH_TO_CM;
+  byId('calcDia').textContent = round2(display_dia).toFixed(2);
+}
+function applyTireDia(){
+  const diaStr = byId('calcDia').textContent;
+  if(diaStr !== '-'){
+    const dia = parseFloat(diaStr);
+    byId('tireDia_val').value = dia.toFixed(2);
+    byId('tireDia').value = dia.toFixed(2);
+    if(!byId('compatMode').checked){
+      byId('unlockTire').checked = true;
+      toggleTireEdit();
+    }
+    recalc();
+  }
+  byId('tireCalcDialog').close();
+}
+function showHelp(){
+  alert(`Reach top speed in a gear, note RPM and speed (${speedUnit === 'mph' ? 'MPH' : 'KM/H'}), then enter the gear and final drive ratios.`);
+}
+function openSettingsDialog(){
+  byId('speedUnitSel').value = speedUnit;
+  byId('diaUnitSel').value = diaUnit;
+  byId('bgColor').value = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  byId('panelColor').value = getComputedStyle(document.documentElement).getPropertyValue('--panel').trim();
+  byId('textColor').value = getComputedStyle(document.documentElement).getPropertyValue('--text').trim();
+  byId('fontFamily').value = getComputedStyle(document.documentElement).getPropertyValue('--font-family').trim();
+  byId('fontSize').value = getComputedStyle(document.documentElement).getPropertyValue('--font-size').trim();
+  byId('fontStyle').value = getComputedStyle(document.documentElement).getPropertyValue('--font-style').trim();
+  byId('fontWeight').value = getComputedStyle(document.documentElement).getPropertyValue('--font-weight').trim();
+  byId('settingsDialog').showModal();
+}
+function applySettings(){
+  const newSpeedUnit = byId('speedUnitSel').value;
+  const newDiaUnit = byId('diaUnitSel').value;
+  const bg = byId('bgColor').value;
+  const panel = byId('panelColor').value;
+  const text = byId('textColor').value;
+  const fontFamily = byId('fontFamily').value;
+  const fontSize = byId('fontSize').value;
+  const fontStyle = byId('fontStyle').value;
+  const fontWeight = byId('fontWeight').value;
+  document.documentElement.style.setProperty('--bg', bg);
+  document.documentElement.style.setProperty('--panel', panel);
+  document.documentElement.style.setProperty('--text', text);
+  document.documentElement.style.setProperty('--font-family', fontFamily);
+  document.documentElement.style.setProperty('--font-size', fontSize);
+  document.documentElement.style.setProperty('--font-style', fontStyle);
+  document.documentElement.style.setProperty('--font-weight', fontWeight);
+  if(newSpeedUnit !== speedUnit || newDiaUnit !== diaUnit){
+    if(newDiaUnit !== diaUnit){
+      let currentDia = parseFloat(byId('tireDia_val').value);
+      if(diaUnit === 'inches' && newDiaUnit === 'cm'){
+        currentDia *= INCH_TO_CM;
+      } else if(diaUnit === 'cm' && newDiaUnit === 'inches'){
+        currentDia /= INCH_TO_CM;
+      }
+      byId('tireDia_val').value = round2(currentDia).toFixed(2);
+      byId('tireDia').value = round2(currentDia).toFixed(2);
+      const minDia = newDiaUnit === 'inches' ? 18 : 18 * INCH_TO_CM;
+      const maxDia = newDiaUnit === 'inches' ? 30 : 30 * INCH_TO_CM;
+      byId('tireDia').min = minDia;
+      byId('tireDia').max = maxDia;
+      byId('tireDia_val').min = minDia;
+      byId('tireDia_val').max = maxDia;
+    }
+    speedUnit = newSpeedUnit;
+    diaUnit = newDiaUnit;
+    updateUnitLabels();
+    recalc();
+  }
+  byId('settingsDialog').close();
+}
+function updateUnitLabels(){
+  byId('tireLabel').textContent = `Tire diameter (${diaUnit})`;
+  byId('calcSpeedLabel').textContent = `Speed (${speedUnit === 'mph' ? 'mph' : 'km/h'}):`;
+  byId('calcDiaP').textContent = `Tire Diameter (${diaUnit}): `;
+  const span = document.createElement('span');
+  span.id = 'calcDia';
+  span.textContent = '-';
+  byId('calcDiaP').appendChild(span);
+}
+/* ---------- Defaults ---------- */
+const baseDefaultsA = [3.5, 3.0304878048780486, 2.623958953004164, 2.2719644593084833, 1.9671887391573453, 1.70329756683136];
+let rA = baseDefaultsA[5] / baseDefaultsA[4];
+const extraDefaultsA = [];
+let lastA = baseDefaultsA[5];
+for(let k = 0; k < 4; k++){
+  lastA = round2(lastA * rA);
+  extraDefaultsA.push(lastA);
+}
+const defaultsA = baseDefaultsA.concat(extraDefaultsA);
+
+const baseDefaultsB = [1.61, 1.40, 1.19, 1.01, 0.86, 0.75];
+let rB = baseDefaultsB[5] / baseDefaultsB[4];
+const extraDefaultsB = [];
+let lastB = baseDefaultsB[5];
+for(let k = 0; k < 4; k++){
+  lastB = round2(lastB * rB);
+  extraDefaultsB.push(lastB);
+}
+const defaultsB = baseDefaultsB.concat(extraDefaultsB);
+
+/* ---------- Globals ---------- */
+let maxGears = 6;
+let gearValuesA = defaultsA;
+let gearValuesB = defaultsB;
+let enables = Array(10).fill(true).map((v, i) => i < 6 ? true : false);
+
+/* ---------- UI builders ---------- */
+function rebuildGears(prefix){
+  const blockId = 'gears' + prefix;
+  const el = byId(blockId); el.innerHTML = '';
+  const titles = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th'];
+  const gearVals = (prefix === 'A' ? gearValuesA : gearValuesB);
+  const compat = byId('compatMode').checked;
+  for(let idx=0; idx<maxGears; idx++){
+    const i = idx+1;
+    const row = document.createElement('div'); row.className='row';
+    const label = document.createElement('label');
+    if(prefix === 'A'){
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.id = 'enableG' + i;
+      check.checked = enables[idx];
+      check.onchange = () => handleEnableChange(idx, check.checked);
+      label.appendChild(check);
+      label.appendChild(document.createTextNode(' ' + titles[idx] + ' gear ratio'));
+    } else {
+      label.textContent = titles[idx]+' gear ratio';
+    }
+    const range = document.createElement('input');
+    range.type='range'; range.min='0'; range.max= compat ? '6' : '4'; range.step='0.01';
+    range.id = prefix+'G'+i; range.value = round2(gearVals[idx]);
+    const num = document.createElement('input');
+    num.type='number'; num.step='0.01'; num.min='0'; num.max= compat ? '6' : '4';
+    num.id = prefix+'G'+i+'_val'; num.value = round2(gearVals[idx]);
+    range.oninput = () => { num.value = round2(range.value); recalc(); };
+    num.oninput = () => { range.value = round2(num.value); recalc(); };
+    if(!enables[idx]){
+      range.disabled = true;
+      num.disabled = true;
+    }
+    row.appendChild(label); row.appendChild(range); row.appendChild(num);
+    el.appendChild(row);
+  }
+}
+function handleEnableChange(idx, checked){
+  enables[idx] = checked;
+  if(checked){
+    for(let j=0; j<idx; j++){
+      enables[j] = true;
+    }
+  } else {
+    for(let j=idx+1; j<10; j++){
+      enables[j] = false;
+    }
+  }
+  rebuildGears('A');
+  rebuildGears('B');
+  recalc();
+}
+function toggleCompat(){
+  const checked = byId('compatMode').checked;
+  maxGears = checked ? 10 : 6;
+  const fdMax = checked ? 6 : 5;
+  byId('fdA').max = fdMax;
+  byId('fdA_val').max = fdMax;
+  byId('fdB').max = fdMax;
+  byId('fdB_val').max = fdMax;
+  const rpmMax = checked ? 15000 : 11000;
+  const rpmValMax = checked ? 16000 : 12000;
+  byId('shiftRPM').max = rpmMax;
+  byId('afterRPM').max = rpmMax;
+  byId('shiftRPM_val').max = rpmValMax;
+  byId('afterRPM_val').max = rpmValMax;
+  // Clamp values if necessary
+  let shiftVal = parseFloat(byId('shiftRPM').value);
+  if(shiftVal > rpmMax){
+    shiftVal = rpmMax;
+  }
+  byId('shiftRPM').value = shiftVal;
+  byId('shiftRPM_val').value = shiftVal;
+  let afterVal = parseFloat(byId('afterRPM').value);
+  if(afterVal > rpmMax){
+    afterVal = rpmMax;
+  }
+  byId('afterRPM').value = afterVal;
+  byId('afterRPM_val').value = afterVal;
+  if(!checked){
+    for(let j=6; j<10; j++){
+      enables[j] = false;
+    }
+  }
+  // Handle tire diameter lock visibility and state
+  if(checked){
+    byId('unlockSection').style.display = 'none';
+    byId('calcButton').style.display = 'inline-block';
+    byId('tireDia').disabled = false;
+    byId('tireDia_val').readOnly = false;
+  } else {
+    byId('unlockSection').style.display = 'flex';
+    byId('calcButton').style.display = 'none';
+    byId('tireDia').disabled = true;
+    byId('tireDia_val').readOnly = true;
+    byId('unlockTire').checked = false;
+  }
+  rebuildGears('A');
+  rebuildGears('B');
+  recalc();
+}
+function speedAt(rpm, gear, fd, dia){
+  if (gear <= 0 || fd <= 0) return NaN;
+  const dia_inches = diaUnit === 'inches' ? dia : dia / INCH_TO_CM;
+  let mph = rpm * (Math.PI * dia_inches) / (gear * fd * 1056);
+  return speedUnit === 'mph' ? mph : mph * MPH_TO_KPH;
+}
+function getGearSuffix(num){
+  if(num === 1) return 'st';
+  if(num === 2) return 'nd';
+  if(num === 3) return 'rd';
+  return 'th';
+}
+function buildTable(fd, gears, shiftRPM, tireDia){
+  const rows = [];
+  gears.forEach((g, i) => {
+    if(!enables[i]) return;
+    const speed = speedAt(shiftRPM, g, fd, tireDia);
+    let drop = '', after = '', into = '';
+    if(i < gears.length - 1 && enables[i+1]){
+      const next = +gears[i + 1];
+      const afterRPM = (g > 0) ? (shiftRPM * (next / g)) : NaN;
+      drop = Number.isFinite(afterRPM) ? (shiftRPM - afterRPM) : NaN;
+      after = afterRPM;
+      const nextNum = i + 2;
+      into = `in ${nextNum}${getGearSuffix(nextNum)} Gear`;
+    }
+    const gearNum = i + 1;
+    rows.push({
+      gearLabel: `${gearNum}${getGearSuffix(gearNum)}`,
+      gear: g,
+      speed,
+      drop,
+      after,
+      into
+    });
+  });
+  const speedUnitUpper = speedUnit === 'mph' ? 'MPH' : 'KM/H';
+  let html = '<table><thead><tr><th>Gear</th><th>Ratio</th><th>Top speed @ ' + fmt(shiftRPM,0) + ' RPM</th><th>RPM drop</th><th>RPM after</th><th></th></tr></thead><tbody>';
+  rows.forEach(r => {
+    html += `<tr>
+      <td>${r.gearLabel}</td>
+      <td>${fmt(round2(r.gear),2)}</td>
+      <td>${safeFmt(r.speed,2)} ${speedUnitUpper}</td>
+      <td>${r.drop!==''?safeFmt(r.drop,2):''}</td>
+      <td>${r.after!==''?safeFmt(r.after,2):''}</td>
+      <td class="muted">${r.into}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  return html;
+}
+/* ---------- Export logic ---------- */
+function getSetup(prefix){
+  const shift = parseFloat(byId('shiftRPM').value);
+  const after = parseFloat(byId('afterRPM').value);
+  const tireDia = parseFloat(byId('tireDia_val').value);
+  const compat = byId('compatMode').checked;
+  const fdMax = compat ? 6 : 5;
+  const fd = round2(clamp(parseFloat(byId('fd'+prefix).value),0,fdMax));
+  const gears = [];
+  const gearMax = compat ? 6 : 4;
+  for(let idx=0; idx<maxGears; idx++){
+    const i = idx+1;
+    if(enables[idx]){
+      gears.push(round2(clamp(parseFloat(byId(prefix+'G'+i+'_val').value),0,gearMax)));
+    }
+  }
+  return {shift, after, tireDia, fd, gears};
+}
+function exportSetup(prefix){
+  const id = (prefix==='A'?'Setup A':'Setup B');
+  const {shift, after, tireDia, fd, gears} = getSetup(prefix);
+  const now = new Date();
+  const ts = now.toISOString().replace(/[-:T]/g,'').slice(0,15);
+  let lines = [];
+  lines.push(`PCR Gear Tuner - ${id}`);
+  lines.push(`Timestamp: ${now.toISOString()}`);
+  lines.push('');
+  lines.push('[Common Inputs]');
+  lines.push(`Shift RPM (before): ${fmt(shift,0)}`);
+  lines.push(`Target RPM after: ${fmt(after,0)}`);
+  lines.push(`Tire diameter (${diaUnit}): ${fmt(tireDia,2)}`);
+  lines.push(`Speed unit: ${speedUnit === 'mph' ? 'MPH' : 'KM/H'}`);
+  lines.push('');
+  lines.push(`[${id}]`);
+  lines.push(`Final drive: ${fmt(fd,2)}`);
+  lines.push('Gears (ratio): ' + gears.map(g=>fmt(g,2)).join(', '));
+  lines.push('');
+  lines.push('Per-gear results at shift RPM:');
+  gears.forEach((g, i)=>{
+    const speed = speedAt(shift, g, fd, tireDia);
+    let afterRPM = NaN, drop = NaN;
+    if(i < gears.length-1){
+      const next = gears[i+1];
+      afterRPM = shift * (next / g);
+      drop = shift - afterRPM;
+    }
+    const gearNum = i + 1;
+    const gearName = `${gearNum}${getGearSuffix(gearNum)}`;
+    lines.push(`${gearName.padEnd(4)} | Ratio ${fmt(g,2).padStart(5)} | Top ${safeFmt(speed,2).padStart(7)} ${speedUnit === 'mph' ? 'mph' : 'km/h'}` +
+               (Number.isFinite(afterRPM) ? ` | After ${fmt(afterRPM,2).padStart(7)} rpm | Drop ${fmt(drop,2).padStart(7)} rpm` : ''));
+  });
+  const content = lines.join('\n');
+  const blob = new Blob([content], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `PCR_Tune_${prefix}_${ts}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+/* ---------- Recalc pipeline ---------- */
+function recalc(){
+  const shift = parseFloat(byId('shiftRPM').value);
+  const after = parseFloat(byId('afterRPM').value);
+  const tireDia = parseFloat(byId('tireDia_val').value);
+  const auto = byId('autoProg').checked;
+  const compat = byId('compatMode').checked;
+  const gearMax = compat ? 6 : 4;
+  const fdMax = compat ? 6 : 5;
+  // Setup A
+  const GA = [];
+  for(let idx=0; idx<maxGears; idx++){
+    const i = idx+1;
+    const val = round2(clamp(parseFloat(byId('A'+'G'+i+'_val').value),0,gearMax));
+    GA.push(val);
+    byId('A'+'G'+i).value = val.toFixed(2);
+    byId('A'+'G'+i+'_val').value = val.toFixed(2);
+  }
+  if(auto && GA.length > 0){
+    const r = after / shift;
+    for(let k = 1; k < GA.length; k++){
+      if(enables[k] && enables[k-1]){
+        GA[k] = round2(GA[k - 1] * r);
+      }
+    }
+    for(let k = 0; k < GA.length; k++){
+      const i = k + 1;
+      byId('A' + 'G' + i).value = GA[k].toFixed(2);
+      byId('A' + 'G' + i + '_val').value = GA[k].toFixed(2);
+    }
+  }
+  const fdA = round2(clamp(parseFloat(byId('fdA').value),0,fdMax));
+  byId('fdA').value = fdA.toFixed(2); byId('fdA_val').value = fdA.toFixed(2);
+  byId('tableA').innerHTML = buildTable(fdA, GA, shift, tireDia);
+  // Setup B
+  const GB = [];
+  for(let idx=0; idx<maxGears; idx++){
+    const i = idx+1;
+    const val = round2(clamp(parseFloat(byId('B'+'G'+i+'_val').value),0,gearMax));
+    GB.push(val);
+    byId('B'+'G'+i).value = val.toFixed(2);
+    byId('B'+'G'+i+'_val').value = val.toFixed(2);
+  }
+  const fdB = round2(clamp(parseFloat(byId('fdB').value),0,fdMax));
+  byId('fdB').value = fdB.toFixed(2); byId('fdB_val').value = fdB.toFixed(2);
+  byId('tableB').innerHTML = buildTable(fdB, GB, shift, tireDia);
+}
+/* ---------- Init ---------- */
+function init(){
+  rebuildGears('A');
+  rebuildGears('B');
+  byId('tireDia').value = byId('tireDia_val').value;
+  // Initial state: compat off
+  byId('unlockSection').style.display = 'flex';
+  byId('calcButton').style.display = 'none';
+  byId('tireDia').disabled = true;
+  byId('tireDia_val').readOnly = true;
+  byId('unlockTire').checked = false;
+  updateUnitLabels();
+  recalc();
+}
+init();
+</script>
+</body>
+</html>
+```
